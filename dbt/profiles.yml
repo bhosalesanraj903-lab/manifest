@@ -1,0 +1,8 @@
+manifest:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/gold/manifest.duckdb
+      threads: 4
+    # R13 will add a `snowflake` target here (dbt retarget, ADR-003)

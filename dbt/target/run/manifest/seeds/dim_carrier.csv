@@ -1,0 +1,11 @@
+
+    
+    
+    truncate table "manifest"."main"."dim_carrier";
+    -- dbt seed --
+    
+          COPY "manifest"."main"."dim_carrier" FROM '/Users/sanrajbhosale/projects/manifest/dbt/seeds/dim_carrier.csv' (FORMAT CSV, HEADER TRUE, DELIMITER ',')
+        
+
+;
+  

@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: fct_shipment_events
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
+      - name: event_type
+        tests:
+          - accepted_values:
+              values: [booking_confirmed, gate_in, loaded_on_vessel,
+                       vessel_departed, vessel_arrived, customs_release,
+                       out_for_delivery, delivered]
+  - name: stg_exception_queue
+    columns:
+      - name: exception_id
+        tests: [unique, not_null]
+      - name: probable_cause
+        tests:
+          - accepted_values:
+              values: [weather, congestion, disruption, unknown]
+  - name: fct_shipment_legs
+    columns:
+      - name: shipment_id
+        tests: [unique, not_null]
+  - name: carrier_scorecard
+    columns:
+      - name: carrier
+        tests: [not_null]
+
+seeds:
+  - name: dim_location
+    columns:
+      - name: unlocode
+        tests: [unique, not_null]
+  - name: dim_carrier
+    columns:
+      - name: carrier_code
+        tests: [unique, not_null]
