@@ -2,14 +2,14 @@
 # Boxes are [[lat_min, lon_min], [lat_max, lon_max]] as aisstream.io expects.
 # Phase 0 subscribes only to la_long_beach; R5 adds singapore_strait and india_west.
 ports:
-  USLAX: {name: Los Angeles, country: US}
-  USLGB: {name: Long Beach, country: US}
-  SGSIN: {name: Singapore, country: SG}
-  INNSA: {name: JNPT Nhava Sheva, country: IN}
-  INMUN: {name: Mundra, country: IN}
-  CNSHA: {name: Shanghai, country: CN}
-  NLRTM: {name: Rotterdam, country: NL}
-  DEHAM: {name: Hamburg, country: DE}
+  USLAX: {name: Los Angeles, country: US, lat: 33.73, lon: -118.26}
+  USLGB: {name: Long Beach, country: US, lat: 33.75, lon: -118.19}
+  SGSIN: {name: Singapore, country: SG, lat: 1.26, lon: 103.84}
+  INNSA: {name: JNPT Nhava Sheva, country: IN, lat: 18.95, lon: 72.95}
+  INMUN: {name: Mundra, country: IN, lat: 22.75, lon: 69.70}
+  CNSHA: {name: Shanghai, country: CN, lat: 31.23, lon: 121.49}
+  NLRTM: {name: Rotterdam, country: NL, lat: 51.95, lon: 4.14}
+  DEHAM: {name: Hamburg, country: DE, lat: 53.54, lon: 9.97}
 
 ais_boxes:
   la_long_beach:

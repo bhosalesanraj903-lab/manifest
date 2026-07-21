@@ -79,7 +79,7 @@ VESSEL_STALLED_H = 72
 EVENT_FIELDS = ["event_id", "shipment_id", "carrier", "event_type",
                 "planned_ts", "actual_ts", "origin", "dest", "vessel_mmsi"]
 EXC_FIELDS = ["exception_id", "shipment_id", "carrier", "exception_type",
-              "detected_at", "age_hours", "detail"]
+              "detected_at", "age_hours", "detail", "probable_cause"]
 LEG_FIELDS = ["shipment_id", "leg_seq", "mode", "vessel_mmsi", "origin", "dest"]
 
 
@@ -125,6 +125,44 @@ def normalize_event(raw: dict) -> tuple[dict | None, str | None]:
         "dest": raw.get("dest", ""),
         "vessel_mmsi": raw.get("vessel_mmsi", ""),
     }, None
+
+
+PORTS_CFG = yaml.safe_load((ROOT / "config" / "ports.yml").read_text())
+CONGESTED_VESSELS_MIN = 5
+WEATHER_WIND_KMH = 60.0
+
+
+def _latest_by(path: Path, key: str) -> dict[str, dict]:
+    """Latest row per `key` from a dated silver CSV ('' if file missing)."""
+    out: dict[str, dict] = {}
+    if path.exists():
+        with path.open() as f:
+            for r in csv.DictReader(f):
+                cur = out.get(r[key])
+                if cur is None or r["date"] >= cur["date"]:
+                    out[r[key]] = r
+    return out
+
+
+def probable_cause(dest_port: str, conditions: dict[str, dict],
+                   congestion: dict[str, dict]) -> str:
+    """R8: attribute a likely cause at detection time. Nullable -> 'unknown'."""
+    cond = conditions.get(dest_port)
+    if cond:
+        try:
+            windy = float(cond["wind_max_kmh"] or 0) >= WEATHER_WIND_KMH
+        except ValueError:
+            windy = False
+        if int(cond["weather_alerts"] or 0) > 0 or windy:
+            return "weather"
+        if int(cond["disruption_news"] or 0) > 0:
+            return "disruption"
+    for box, cfg in PORTS_CFG["ais_boxes"].items():
+        if dest_port in cfg["ports"]:
+            row = congestion.get(box)
+            if row and int(row["vessels_at_anchor"]) >= CONGESTED_VESSELS_MIN:
+                return "congestion"
+    return "unknown"
 
 
 def load_vessel_dwell() -> dict[str, float]:
@@ -257,6 +295,14 @@ def run(asof: datetime) -> dict:
     rows.sort(key=lambda r: (r["shipment_id"], r["actual_ts"], r["event_id"]))
     exceptions = detect_exceptions(rows, asof, load_vessel_dwell())
     legs = build_legs(rows)
+
+    # R8: probable_cause join at detection time.
+    conditions = _latest_by(SILVER / "port_conditions.csv", "port")
+    congestion = _latest_by(SILVER / "port_congestion.csv", "port")
+    dest_by_shipment = {r["shipment_id"]: r["dest"] for r in rows}
+    for e in exceptions:
+        e["probable_cause"] = probable_cause(
+            dest_by_shipment.get(e["shipment_id"], ""), conditions, congestion)
 
     SILVER.mkdir(parents=True, exist_ok=True)
     with (SILVER / "shipment_events.csv").open("w", newline="") as f:
