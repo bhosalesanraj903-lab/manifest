@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := .venv/bin/pip
 
-.PHONY: venv generate ingest normalize run test up down ais dbt
+.PHONY: venv generate ingest normalize run test up down ais dbt eta
 
 venv:
 	python3 -m venv .venv

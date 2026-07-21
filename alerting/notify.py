@@ -34,6 +34,7 @@ SILVER = ROOT / "data" / "silver"
 BANDS_H = [48, 96]  # band 0: <48h, band 1: 48-96h, band 2: >=96h
 RETRIES = 3
 BACKOFF_S = 2.0  # base; grows 2x per attempt (patched short in tests)
+QUARANTINE_SPIKE_PCT = 5.0  # game day R11b: a garbage batch must page someone
 
 
 def band(age_hours: float) -> int:
@@ -104,6 +105,23 @@ def run(silver: Path = SILVER, webhook_url: str | None = None,
             with failures_path.open("a") as f:
                 f.write(json.dumps({"failed_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                     "exception": exc, "message": text}) + "\n")
+
+    # Operational alert: quarantine spike (R11b). Alerted once per UTC day.
+    run_summary_path = silver / "_run_summary.json"
+    if run_summary_path.exists():
+        rs = json.loads(run_summary_path.read_text())
+        read, quarantined = rs.get("events_read", 0), rs.get("quarantined", {}).get("total", 0)
+        pct = 100.0 * quarantined / read if read else 0.0
+        summary["quarantine_pct"] = round(pct, 1)
+        ops_key = f"ops:quarantine_spike:{now.strftime('%Y-%m-%d')}"
+        if pct > QUARANTINE_SPIKE_PCT and ops_key not in state:
+            text = (f":warning: QUARANTINE SPIKE — {quarantined}/{read} events "
+                    f"({pct:.1f}%) quarantined this run; see data/quarantine/")
+            ok = send_slack(text, webhook_url) if webhook_url else (print(f"[log-only] {text}") or True)
+            if ok:
+                state[ops_key] = {"type": "ops", "band": 0,
+                                  "alerted_at": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
+                summary["ops_alerts"] = summary.get("ops_alerts", 0) + 1
 
     state_path.write_text(json.dumps(state, indent=2))
     return summary
