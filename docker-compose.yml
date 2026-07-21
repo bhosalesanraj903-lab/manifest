@@ -1,7 +1,28 @@
-# Dev orchestration stack. Phase 0: Airflow standalone only.
-# R2 adds prometheus + pushgateway + grafana; R4 introduces the hardened
-# docker-compose.prod.yml under deploy/.
+# Dev orchestration stack: Airflow standalone + observability (R2/R7).
+# R4's hardened production variant lives at deploy/docker-compose.prod.yml.
 services:
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    ports:
+      - "9091:9091"
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+
   airflow:
     image: apache/airflow:3.0.2
     command: standalone
@@ -12,6 +33,7 @@ services:
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     volumes:
       - ./dags:/opt/airflow/dags
       - .:/opt/airflow/manifest

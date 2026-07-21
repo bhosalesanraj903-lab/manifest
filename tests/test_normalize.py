@@ -20,6 +20,7 @@ def lake(tmp_path, monkeypatch):
     shutil.copy(FIXTURE, part / "events_abc.ndjson")
     monkeypatch.setattr(normalize, "BRONZE", bronze)
     monkeypatch.setattr(normalize, "SILVER", silver)
+    monkeypatch.setattr(normalize, "QUARANTINE", tmp_path / "quarantine")
     return silver
 
 
@@ -82,3 +83,17 @@ def test_quarantined_rows_do_not_crash_run(lake):
     assert summary["quarantined"]["total"] == 3
     events = read_csv(lake / "shipment_events.csv")
     assert all(not e["shipment_id"].startswith("XXXX") for e in events)
+
+
+def test_quarantine_rows_written_with_reason(lake):
+    # R3: planted bad rows land in data/quarantine/YYYY-MM-DD/carrier.ndjson
+    normalize.run(ASOF)
+    qfile = normalize.QUARANTINE / "2026-07-21" / "carrier.ndjson"
+    rows = [__import__("json").loads(l) for l in qfile.read_text().splitlines()]
+    reasons = sorted(r["reason"] for r in rows)
+    assert reasons == ["unknown_status", "unmapped_ref", "unparseable_time"]
+    unmapped = next(r for r in rows if r["reason"] == "unmapped_ref")
+    assert unmapped["ref"] == "XXXX123456789"  # original payload preserved
+    # idempotent: second run rewrites, does not append
+    normalize.run(ASOF)
+    assert len(qfile.read_text().splitlines()) == 3

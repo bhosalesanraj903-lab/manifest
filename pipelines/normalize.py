@@ -28,6 +28,7 @@ Usage:
 import argparse
 import csv
 import json
+import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
@@ -39,6 +40,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 BRONZE = ROOT / "data" / "bronze" / "carrier"
 SILVER = ROOT / "data" / "silver"
+QUARANTINE = ROOT / "data" / "quarantine"
 
 CARRIERS_CFG = yaml.safe_load((ROOT / "config" / "carriers.yml").read_text())
 CARRIERS = CARRIERS_CFG["carriers"]
@@ -187,19 +189,32 @@ def run(asof: datetime) -> dict:
 
     rows: list[dict] = []
     seen: set[str] = set()
+    quarantined: dict[str, list[dict]] = {}  # partition date -> bad rows (R3)
     for path in sorted(BRONZE.glob("*/*.ndjson")):
+        part_date = path.parent.name
         for line in path.read_text().splitlines():
             summary["events_read"] += 1
-            row, reason = normalize_event(json.loads(line))
+            raw = json.loads(line)
+            row, reason = normalize_event(raw)
             if reason:
                 summary["quarantined"][reason] += 1
                 summary["quarantined"]["total"] += 1
+                quarantined.setdefault(part_date, []).append(dict(raw, reason=reason))
                 continue
             if row["event_id"] in seen:
                 summary["duplicates"] += 1
                 continue
             seen.add(row["event_id"])
             rows.append(row)
+
+    # R3: quarantined rows are WRITTEN, not just counted — never silence.
+    # Full rebuild -> rewrite each partition's file (idempotent re-runs).
+    for part_date, bad in quarantined.items():
+        qdir = QUARANTINE / part_date
+        qdir.mkdir(parents=True, exist_ok=True)
+        with (qdir / "carrier.ndjson").open("w") as f:
+            for rec in bad:
+                f.write(json.dumps(rec) + "\n")
 
     rows.sort(key=lambda r: (r["shipment_id"], r["actual_ts"], r["event_id"]))
     exceptions = detect_exceptions(rows, asof)
@@ -227,7 +242,11 @@ def main() -> None:
     args = ap.parse_args()
     asof = (datetime.fromisoformat(args.asof).replace(tzinfo=timezone.utc)
             if args.asof else datetime.now(timezone.utc))
-    print(json.dumps(run(asof)))
+    summary = run(asof)
+    print(json.dumps(summary))
+    if os.environ.get("PUSHGATEWAY_URL"):
+        from pipelines.metrics import push_run_summary
+        push_run_summary(summary)
 
 
 if __name__ == "__main__":
