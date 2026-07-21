@@ -27,5 +27,5 @@ up:
 down:
 	docker compose down
 
-ais:
-	$(PY) -m ais.consumer
+ais:  # reads AISSTREAM_API_KEY from .env if present
+	@set -a; [ -f .env ] && . ./.env; set +a; $(PY) -m ais.consumer
