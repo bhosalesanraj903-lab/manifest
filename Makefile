@@ -39,3 +39,6 @@ dbt:  # gold layer build + tests (R9); needs `python3.13 -m venv .venv-dbt && .v
 
 eta:  # R10 predictions (uses gold/eta_baseline.csv when present)
 	$(PY) -m eta.predict
+
+benchmark:  # R12: 200k shipments, Python vs Spark, asserts row-identical
+	JAVA_HOME=$$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home PYTHONPATH=$$PWD .venv-dbt/bin/python -m spark.benchmark --count 200000

@@ -104,6 +104,27 @@ def poll_gdelt(date: str) -> dict:
     return {"source": "gdelt", "ok": 0, "errors": 1}
 
 
+def poll_air_quality(date: str) -> dict:
+    """R15: air quality for Indian ports (Open-Meteo AQ; public CPCB proxy —
+    CPCB itself has no stable public API, decision recorded in ADR-004)."""
+    results, errors = {}, {}
+    for code, p in PORTS.items():
+        if p["country"] != "IN":
+            continue
+        try:
+            r = requests.get(
+                "https://air-quality-api.open-meteo.com/v1/air-quality",
+                params={"latitude": p["lat"], "longitude": p["lon"],
+                        "hourly": "pm2_5,pm10", "forecast_days": 1, "timezone": "UTC"},
+                timeout=15)
+            r.raise_for_status()
+            results[code] = r.json()
+        except requests.RequestException as e:
+            errors[code] = repr(e)
+    _land(date, "air_quality", {"results": results, "errors": errors})
+    return {"source": "air_quality", "ok": len(results), "errors": len(errors)}
+
+
 def build_conditions(date: str) -> list[dict]:
     """Pure transform: bronze weather files for `date` -> port_conditions rows."""
     day = BRONZE_WEATHER / date
@@ -144,14 +165,16 @@ def write_conditions(date: str) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--source", required=True,
-                    choices=["nws", "open_meteo", "gdelt", "conditions", "all"])
+                    choices=["nws", "open_meteo", "gdelt", "air_quality",
+                             "conditions", "all"])
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
     date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     steps = {"nws": [poll_nws], "open_meteo": [poll_open_meteo], "gdelt": [poll_gdelt],
-             "conditions": [write_conditions],
-             "all": [poll_nws, poll_open_meteo, poll_gdelt, write_conditions]}[args.source]
+             "air_quality": [poll_air_quality], "conditions": [write_conditions],
+             "all": [poll_nws, poll_open_meteo, poll_gdelt, poll_air_quality,
+                     write_conditions]}[args.source]
 
     summaries = [s(date) for s in steps]
     print(json.dumps(summaries))

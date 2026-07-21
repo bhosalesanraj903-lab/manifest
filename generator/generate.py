@@ -32,6 +32,18 @@ VESSELS = yaml.safe_load((ROOT / "config" / "vessels.yml").read_text())["vessels
 # Milestones that ride the vessel; their raw events carry the vessel MMSI (R6).
 OCEAN_MILESTONES = {"loaded_on_vessel", "vessel_departed", "vessel_arrived"}
 
+# R15: last-mile address chaos for India-bound shipments.
+INDIA_PORTS = {"INNSA", "INMUN"}
+INDIA_CITIES = [("Mumbai", "400001"), ("Navi Mumbai", "400703"), ("Pune", "411001"),
+                ("Ahmedabad", "380001"), ("Gandhidham", "370201"), ("Surat", "395003")]
+PIN_STYLES = [  # how the same PIN appears in real address feeds
+    lambda p: p,
+    lambda p: f"{p[:3]} {p[3:]}",
+    lambda p: f"PIN-{p}",
+    lambda p: f"- {p[:3]}-{p[3:]}",
+    lambda p: p.replace("0", "O", 1),  # confusable letter
+]
+
 # Canonical milestone -> raw status string as carriers actually send them.
 RAW_STATUS = {
     "booking_confirmed": "BOOKING CONFIRMED",
@@ -145,6 +157,21 @@ def gen_events(count: int, seed: int, asof: datetime) -> list[dict]:
             }
             if ms in OCEAN_MILESTONES:
                 record["vessel_mmsi"] = vessel["mmsi"]
+
+            # R15: India-bound out-for-delivery events carry a chaotic
+            # last-mile address and an e-way bill (sometimes already expired).
+            if ms == "out_for_delivery" and dest in INDIA_PORTS:
+                city, pin = rng.choice(INDIA_CITIES)
+                if rng.random() < 0.05:
+                    addr = f"Plot {rng.randint(1, 400)}, MIDC Area, {city}"  # PIN missing
+                else:
+                    addr = (f"Plot {rng.randint(1, 400)}, MIDC Area, {city} "
+                            f"{rng.choice(PIN_STYLES)(pin)}")
+                record["delivery_address"] = addr
+                record["eway_bill_no"] = "EWB" + "".join(rng.choices(string.digits, k=12))
+                validity_h = rng.choice([24, 72, 168])  # some expire mid-delivery
+                record["eway_valid_until"] = encode_ts(
+                    actual + timedelta(hours=validity_h), ts_fmt)
 
             # Plant dirt at low rates (quarantine reasons per R3).
             r = rng.random()

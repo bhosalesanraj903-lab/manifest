@@ -81,6 +81,8 @@ EVENT_FIELDS = ["event_id", "shipment_id", "carrier", "event_type",
 EXC_FIELDS = ["exception_id", "shipment_id", "carrier", "exception_type",
               "detected_at", "age_hours", "detail", "probable_cause"]
 LEG_FIELDS = ["shipment_id", "leg_seq", "mode", "vessel_mmsi", "origin", "dest"]
+LASTMILE_FIELDS = ["shipment_id", "address_raw", "pincode", "eway_bill_no",
+                   "eway_valid_until"]
 
 
 def parse_ts(raw: str, fmt: str) -> datetime:
@@ -114,7 +116,7 @@ def normalize_event(raw: dict) -> tuple[dict | None, str | None]:
     except (ValueError, KeyError, OSError):
         return None, "unparseable_time"
 
-    return {
+    row = {
         "event_id": raw["event_id"],
         "shipment_id": raw["ref"],
         "carrier": carrier,
@@ -124,7 +126,24 @@ def normalize_event(raw: dict) -> tuple[dict | None, str | None]:
         "origin": raw.get("origin", ""),
         "dest": raw.get("dest", ""),
         "vessel_mmsi": raw.get("vessel_mmsi", ""),
-    }, None
+    }
+
+    # R15: last-mile payload (India module). Parsed here, written to its own
+    # silver table by run(); never lands in shipment_events columns.
+    if raw.get("delivery_address"):
+        from india.pincode import normalize_pincode
+        try:
+            eway_until = iso(parse_ts(raw["eway_valid_until"], cfg["ts_format"]))
+        except (ValueError, KeyError, OSError):
+            eway_until = ""
+        row["_lastmile"] = {
+            "shipment_id": raw["ref"],
+            "address_raw": raw["delivery_address"],
+            "pincode": normalize_pincode(raw["delivery_address"]) or "",
+            "eway_bill_no": raw.get("eway_bill_no", ""),
+            "eway_valid_until": eway_until,
+        }
+    return row, None
 
 
 PORTS_CFG = yaml.safe_load((ROOT / "config" / "ports.yml").read_text())
@@ -189,8 +208,10 @@ def build_legs(rows: list[dict]) -> list[dict]:
 
 
 def detect_exceptions(rows: list[dict], asof: datetime,
-                      vessel_dwell: dict[str, float] | None = None) -> list[dict]:
+                      vessel_dwell: dict[str, float] | None = None,
+                      lastmile: list[dict] | None = None) -> list[dict]:
     vessel_dwell = vessel_dwell if vessel_dwell is not None else {}
+    lastmile_by_shipment = {lm["shipment_id"]: lm for lm in (lastmile or [])}
     by_shipment: dict[str, list[dict]] = {}
     for r in rows:
         by_shipment.setdefault(r["shipment_id"], []).append(r)
@@ -251,6 +272,17 @@ def detect_exceptions(rows: list[dict], asof: datetime,
                 add(sid, carrier, "VESSEL_STALLED", anchored_h - VESSEL_STALLED_H,
                     f"vessel {mmsi} at anchor {anchored_h:.0f}h mid-voyage")
 
+        # EWAY_BILL_EXPIRED (R15): out for delivery in India but the e-way
+        # bill lapsed before delivery completed — goods legally cannot move.
+        lm = lastmile_by_shipment.get(sid)
+        if lm and lm["eway_valid_until"] and "delivered" not in by_type:
+            valid_until = datetime.strptime(
+                lm["eway_valid_until"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            if valid_until < asof:
+                expired_h = (asof - valid_until).total_seconds() / 3600
+                add(sid, carrier, "EWAY_BILL_EXPIRED", expired_h,
+                    f"e-way bill {lm['eway_bill_no']} expired {expired_h:.0f}h ago")
+
     exceptions.sort(key=lambda e: e["exception_id"])
     return exceptions
 
@@ -264,6 +296,7 @@ def run(asof: datetime) -> dict:
     }
 
     rows: list[dict] = []
+    lastmile_rows: list[dict] = []  # R15 India last-mile legs
     seen: set[str] = set()
     quarantined: dict[str, list[dict]] = {}  # partition date -> bad rows (R3)
     for path in sorted(BRONZE.glob("*/*.ndjson")):
@@ -281,6 +314,9 @@ def run(asof: datetime) -> dict:
                 summary["duplicates"] += 1
                 continue
             seen.add(row["event_id"])
+            lm = row.pop("_lastmile", None)
+            if lm:
+                lastmile_rows.append(lm)
             rows.append(row)
 
     # R3: quarantined rows are WRITTEN, not just counted — never silence.
@@ -293,7 +329,8 @@ def run(asof: datetime) -> dict:
                 f.write(json.dumps(rec) + "\n")
 
     rows.sort(key=lambda r: (r["shipment_id"], r["actual_ts"], r["event_id"]))
-    exceptions = detect_exceptions(rows, asof, load_vessel_dwell())
+    lastmile_rows.sort(key=lambda r: r["shipment_id"])
+    exceptions = detect_exceptions(rows, asof, load_vessel_dwell(), lastmile_rows)
     legs = build_legs(rows)
 
     # R8: probable_cause join at detection time.
@@ -317,6 +354,10 @@ def run(asof: datetime) -> dict:
         w = csv.DictWriter(f, fieldnames=LEG_FIELDS)
         w.writeheader()
         w.writerows(legs)
+    with (SILVER / "last_mile.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=LASTMILE_FIELDS)
+        w.writeheader()
+        w.writerows(lastmile_rows)
 
     summary["events_processed"] = len(rows)
     summary["exceptions"] = len(exceptions)
