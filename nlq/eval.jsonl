@@ -1,0 +1,10 @@
+{"question": "which carrier has the best on-time rate?", "expect": {"kind": "superlative", "metric": "on_time_pct"}}
+{"question": "who has the worst mis-scan rate?", "expect": {"kind": "superlative", "metric": "mis_scan_rate"}}
+{"question": "what is the average customs dwell for Maersk?", "expect": {"kind": "value", "metric": "avg_customs_dwell", "filters": {"carrier": "MAEU"}}}
+{"question": "how many shipments does MSC have?", "expect": {"kind": "value", "metric": "shipments", "filters": {"carrier": "MSCU"}}}
+{"question": "typical delay for Hapag-Lloyd?", "expect": {"kind": "value", "metric": "eta_offset", "filters": {"carrier": "HLCU"}}}
+{"question": "on time percentage into Long Beach", "expect": {"kind": "value", "metric": "on_time_pct", "filters": {"port": "USLGB"}}}
+{"question": "customs clearance time at JNPT", "expect": {"kind": "value", "metric": "avg_customs_dwell", "filters": {"port": "INNSA"}}}
+{"question": "what's the weather in Paris tomorrow?", "expect": {"kind": "refusal"}}
+{"question": "write me a poem about ships", "expect": {"kind": "refusal"}}
+{"question": "should we fire our 3PL?", "expect": {"kind": "refusal"}}

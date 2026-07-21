@@ -5,4 +5,13 @@ manifest:
       type: duckdb
       path: ../data/gold/manifest.duckdb
       threads: 4
-    # R13 will add a `snowflake` target here (dbt retarget, ADR-003)
+    snowflake:  # R13 (ADR-003): dbt build --target snowflake, env-var driven
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD', '') }}"
+      role: SYSADMIN
+      warehouse: manifest_wh
+      database: manifest
+      schema: gold
+      threads: 4

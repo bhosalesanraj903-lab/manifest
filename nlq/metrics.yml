@@ -1,0 +1,50 @@
+# R16: the semantic layer. The NL app may ONLY answer from these definitions —
+# every metric maps to a governed dbt mart column. No freehand math, no
+# answering outside this file.
+metrics:
+  on_time_pct:
+    mart: carrier_scorecard
+    column: on_time_pct
+    agg: weighted_avg          # weighted by shipments when aggregating lanes
+    weight_column: shipments
+    unit: "%"
+    synonyms: [on time, on-time, otp, on time percentage, delivery performance]
+    definition: Percent of delivered shipments arriving within 24h of plan.
+  mis_scan_rate:
+    mart: carrier_scorecard
+    column: mis_scan_rate
+    agg: weighted_avg
+    weight_column: shipments
+    unit: "%"
+    synonyms: [mis-scan, misscan, missed scan, gone dark, dark shipments]
+    definition: Percent of shipments that went silent (MISSED_MILESTONE).
+  avg_customs_dwell:
+    mart: carrier_scorecard
+    column: avg_customs_dwell_h
+    agg: avg
+    unit: h
+    synonyms: [customs dwell, customs time, customs delay, customs clearance time]
+    definition: Average hours from vessel arrival to customs release.
+  shipments:
+    mart: carrier_scorecard
+    column: shipments
+    agg: sum
+    unit: ""
+    synonyms: [shipment count, volume, how many shipments, number of shipments]
+    definition: Count of shipments observed.
+  eta_offset:
+    mart: eta_baseline
+    column: median_offset_h
+    agg: median_of_medians
+    unit: h
+    synonyms: [eta offset, schedule offset, planned vs actual, delay baseline, typical delay]
+    definition: Median planned-vs-actual offset per lane/carrier/milestone.
+
+dimensions:
+  carrier:
+    values: {maersk: MAEU, msc: MSCU, cma: CMDU, cma cgm: CMDU,
+             hapag: HLCU, hapag-lloyd: HLCU, one: ONEY, ocean network: ONEY}
+  port:
+    values: {los angeles: USLAX, la: USLAX, long beach: USLGB, singapore: SGSIN,
+             jnpt: INNSA, nhava sheva: INNSA, mundra: INMUN, shanghai: CNSHA,
+             rotterdam: NLRTM, hamburg: DEHAM}

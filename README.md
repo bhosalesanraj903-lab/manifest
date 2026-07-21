@@ -69,8 +69,19 @@ last milestone; the ocean leg is allowed ~16 days).
 ## Status
 
 - [x] Phase 0 — foundation (generator, ingest, normalize, AIS consumer, DAG, tests)
-- [ ] R1 Slack exception alerter
-- [ ] R2 DAG hardening + Prometheus metrics
-- [ ] R3 quarantine writes
-- [ ] R4 deploy to always-on box
-- [ ] Phase 2+ — see `REQUIREMENTS.md`
+- [x] R1 Slack alerter (escalation bands, retry -> failure ledger)
+- [x] R2 DAG hardening + pushgateway metrics
+- [x] R3 quarantine writes by reason
+- [x] R4 deploy artifacts (`deploy/`, runbooks) — *live deploy needs Docker + a box*
+- [x] R5 AIS depth: 3 port regions, dwell/congestion, dim_vessel
+- [x] R6 ocean legs + VESSEL_STALLED
+- [x] R7 SLOs (`docs/slo.md`) + Grafana dashboard provisioning
+- [x] R8 NWS/Open-Meteo/GDELT enrichment + probable_cause (live-verified)
+- [x] R9 dbt gold layer on duckdb (24/24 build incl. reconciliation test)
+- [x] R10 ETA v1 — MAE 5.15h on seed 42 (`docs/` + explainability columns)
+- [x] R11 game days A+B with postmortems (`docs/postmortems/`)
+- [x] R12 Spark normalizer row-identical at 936k events (`docs/benchmarks/spark.md`)
+- [x] R13 Snowflake artifacts (`snowflake/`, ADR-003) — *execution needs an account*
+- [x] R14 AWS serverless (`infra/terraform/` validated, `lambdas/`, ADR-002) — *apply needs creds*
+- [x] R15 India module: pincode normalizer, e-way expiry, AQ enrichment
+- [x] R16 NL-query app over governed marts (`nlq/`, eval set)
