@@ -93,14 +93,13 @@ resource "aws_sqs_queue_policy" "allow_eventbridge" {
   })
 }
 
+# Staged by `make lambda-stage` (repo root): copies lambdas/ pipelines/ india/
+# config/ and pip-installs pyyaml into build/stage so the zip is self-contained
+# (the Lambda runtime does not ship pyyaml).
 data "archive_file" "lambda_zip" {
   type        = "zip"
   output_path = "${path.module}/build/manifest_lambdas.zip"
-  source_dir  = "${path.module}/../.."
-  excludes = [
-    ".git", ".venv", ".venv-dbt", "data", "docs", "dbt", "deploy",
-    "infra", "spark", "tests", "dags", "snowflake", "Makefile",
-  ]
+  source_dir  = "${path.module}/build/stage"
 }
 
 resource "aws_iam_role" "lambda" {
@@ -176,14 +175,40 @@ resource "aws_lambda_event_source_mapping" "validate_from_sqs" {
   batch_size       = 1
 }
 
-# bronze/ objects -> normalize; silver/events/ objects -> flag (direct S3->Lambda)
-resource "aws_lambda_permission" "s3_invoke" {
-  for_each      = toset(["normalize", "flag"])
-  statement_id  = "AllowS3-${each.key}"
+# bronze/ objects -> normalize; silver/events/ objects -> flag (EventBridge -> Lambda)
+locals {
+  chain_rules = {
+    normalize = "bronze/"
+    flag      = "silver/events/"
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "chain" {
+  for_each = local.chain_rules
+  name     = "manifest-${each.key}-objects"
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["Object Created"]
+    detail = {
+      bucket = { name = [aws_s3_bucket.lake.id] }
+      object = { key = [{ prefix = each.value }] }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "chain" {
+  for_each = local.chain_rules
+  rule     = aws_cloudwatch_event_rule.chain[each.key].name
+  arn      = aws_lambda_function.fn[each.key].arn
+}
+
+resource "aws_lambda_permission" "eventbridge_invoke" {
+  for_each      = local.chain_rules
+  statement_id  = "AllowEventBridge-${each.key}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.fn[each.key].function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.lake.arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.chain[each.key].arn
 }
 
 # Glue database over the silver prefix; Iceberg tables created by Athena DDL.

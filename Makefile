@@ -42,3 +42,9 @@ eta:  # R10 predictions (uses gold/eta_baseline.csv when present)
 
 benchmark:  # R12: 200k shipments, Python vs Spark, asserts row-identical
 	JAVA_HOME=$$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home PYTHONPATH=$$PWD .venv-dbt/bin/python -m spark.benchmark --count 200000
+
+lambda-stage:  # R14: build self-contained Lambda bundle staging dir
+	rm -rf infra/terraform/build/stage && mkdir -p infra/terraform/build/stage
+	cp -R lambdas pipelines india config infra/terraform/build/stage/
+	.venv/bin/pip install -q pyyaml -t infra/terraform/build/stage/
+	find infra/terraform/build/stage -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; true

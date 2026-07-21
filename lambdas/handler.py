@@ -25,13 +25,21 @@ ALERT_TOPIC = os.environ.get("ALERT_TOPIC_ARN", "")
 
 
 def _object_from_event(event: dict) -> tuple[str, str]:
+    """Handle all three delivery shapes: direct EventBridge, SQS-wrapped
+    EventBridge, and raw S3 notification."""
+    def from_detail(d):
+        return d["bucket"]["name"], urllib.parse.unquote_plus(d["object"]["key"])
+
+    if "detail" in event:  # EventBridge -> Lambda direct
+        return from_detail(event["detail"])
     rec = event["Records"][0]
-    body = json.loads(rec["body"]) if "body" in rec else rec  # SQS-wrapped or direct
-    s3rec = body["Records"][0]["s3"] if "Records" in body else body["detail"]
-    bucket = s3rec["bucket"]["name"]
-    key = urllib.parse.unquote_plus(
-        s3rec["object"]["key"] if "object" in s3rec else s3rec["requestParameters"]["key"])
-    return bucket, key
+    if "body" in rec:  # EventBridge -> SQS -> Lambda
+        body = json.loads(rec["body"])
+        if "detail" in body:
+            return from_detail(body["detail"])
+        rec = body["Records"][0]
+    s3rec = rec["s3"]  # raw S3 notification
+    return s3rec["bucket"]["name"], urllib.parse.unquote_plus(s3rec["object"]["key"])
 
 
 def _notify(subject: str, message: str) -> None:
