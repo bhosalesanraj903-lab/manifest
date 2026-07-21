@@ -1,0 +1,26 @@
+# Port metadata + AIS anchorage bounding boxes.
+# Boxes are [[lat_min, lon_min], [lat_max, lon_max]] as aisstream.io expects.
+# Phase 0 subscribes only to la_long_beach; R5 adds singapore_strait and india_west.
+ports:
+  USLAX: {name: Los Angeles, country: US}
+  USLGB: {name: Long Beach, country: US}
+  SGSIN: {name: Singapore, country: SG}
+  INNSA: {name: JNPT Nhava Sheva, country: IN}
+  INMUN: {name: Mundra, country: IN}
+  CNSHA: {name: Shanghai, country: CN}
+  NLRTM: {name: Rotterdam, country: NL}
+  DEHAM: {name: Hamburg, country: DE}
+
+ais_boxes:
+  la_long_beach:
+    ports: [USLAX, USLGB]
+    box: [[33.53, -118.43], [33.79, -118.05]]
+    subscribed: true
+  singapore_strait:
+    ports: [SGSIN]
+    box: [[1.03, 103.55], [1.35, 104.10]]
+    subscribed: false   # R5
+  india_west:
+    ports: [INNSA, INMUN]
+    box: [[18.70, 69.50], [23.00, 73.10]]
+    subscribed: false   # R5

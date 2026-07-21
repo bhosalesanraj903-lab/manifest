@@ -1,0 +1,36 @@
+# Carrier reference formats and payload quirks the normalizer must handle.
+# ref_pattern: regex a valid shipment reference must match for that carrier.
+# ts_format:   how the carrier encodes timestamps in its feed.
+#              iso8601 | epoch_ms | eu_slash (DD/MM/YYYY HH:MM)
+carriers:
+  MAEU:
+    name: Maersk
+    ref_pattern: "^MAEU[0-9]{9}$"
+    ts_format: iso8601
+  MSCU:
+    name: MSC
+    ref_pattern: "^MSCU[0-9]{7}$"
+    ts_format: epoch_ms
+  CMDU:
+    name: CMA CGM
+    ref_pattern: "^CMDU[A-Z]{2}[0-9]{7}$"
+    ts_format: iso8601
+  HLCU:
+    name: Hapag-Lloyd
+    ref_pattern: "^HLCU[0-9]{3}[A-Z][0-9]{6}$"
+    ts_format: eu_slash
+  ONEY:
+    name: Ocean Network Express
+    ref_pattern: "^ONEY[A-Z0-9]{10}$"
+    ts_format: iso8601
+
+# Canonical milestone vocabulary (silver event_type accepted values).
+event_types:
+  - booking_confirmed
+  - gate_in
+  - loaded_on_vessel
+  - vessel_departed
+  - vessel_arrived
+  - customs_release
+  - out_for_delivery
+  - delivered

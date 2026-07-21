@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+ais/consumer.py
+alerting/__init__.py
+generator/generate.py
+manifest.egg-info/PKG-INFO
+manifest.egg-info/SOURCES.txt
+manifest.egg-info/dependency_links.txt
+manifest.egg-info/requires.txt
+manifest.egg-info/top_level.txt
+pipelines/ingest.py
+pipelines/normalize.py
+tests/test_generator.py
+tests/test_normalize.py

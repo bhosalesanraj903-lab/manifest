@@ -1,0 +1,26 @@
+# Dev orchestration stack. Phase 0: Airflow standalone only.
+# R2 adds prometheus + pushgateway + grafana; R4 introduces the hardened
+# docker-compose.prod.yml under deploy/.
+services:
+  airflow:
+    image: apache/airflow:3.0.2
+    command: standalone
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - .:/opt/airflow/manifest
+      - airflow-db:/opt/airflow
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  airflow-db:

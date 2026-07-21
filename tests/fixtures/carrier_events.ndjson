@@ -1,0 +1,13 @@
+{"event_id": "a1", "carrier": "MAEU", "ref": "MAEU123456789", "status": "BOOKING CONFIRMED", "timestamp": "2026-07-01T00:00:00Z", "planned": "2026-07-01T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "a2", "carrier": "MAEU", "ref": "MAEU123456789", "status": "VESSEL DEPARTURE", "timestamp": "2026-07-04T02:00:00Z", "planned": "2026-07-04T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "a3", "carrier": "MAEU", "ref": "MAEU123456789", "status": "VESSEL ARRIVAL", "timestamp": "2026-07-18T00:00:00Z", "planned": "2026-07-18T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "a4", "carrier": "MAEU", "ref": "MAEU123456789", "status": "CUSTOMS RELEASE", "timestamp": "2026-07-19T00:00:00Z", "planned": "2026-07-19T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "a5", "carrier": "MAEU", "ref": "MAEU123456789", "status": "DELIVERED", "timestamp": "2026-07-20T00:00:00Z", "planned": "2026-07-20T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "a5", "carrier": "MAEU", "ref": "MAEU123456789", "status": "DELIVERED", "timestamp": "2026-07-20T00:00:00Z", "planned": "2026-07-20T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "c1", "carrier": "MSCU", "ref": "MSCU1234567", "status": "VESSEL DEPARTURE", "timestamp": "1784556000000", "planned": "1784448000000", "origin": "SGSIN", "dest": "NLRTM"}
+{"event_id": "d1", "carrier": "HLCU", "ref": "HLCU123A456789", "status": "VESSEL ARRIVAL", "timestamp": "18/07/2026 12:00", "planned": "18/07/2026 10:00", "origin": "INNSA", "dest": "DEHAM"}
+{"event_id": "e1", "carrier": "CMDU", "ref": "CMDUAB1234567", "status": "BOOKING CONFIRMED", "timestamp": "2026-07-15T00:00:00Z", "planned": "2026-07-15T00:00:00Z", "origin": "USLGB", "dest": "SGSIN"}
+{"event_id": "e2", "carrier": "CMDU", "ref": "CMDUAB1234567", "status": "GATE-IN FULL", "timestamp": "2026-07-18T22:00:00Z", "planned": "2026-07-18T20:00:00Z", "origin": "USLGB", "dest": "SGSIN"}
+{"event_id": "q1", "carrier": "MAEU", "ref": "XXXX123456789", "status": "GATE-IN FULL", "timestamp": "2026-07-20T00:00:00Z", "planned": "2026-07-20T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "q2", "carrier": "MAEU", "ref": "MAEU999999999", "status": "STATUS_777", "timestamp": "2026-07-20T00:00:00Z", "planned": "2026-07-20T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
+{"event_id": "q3", "carrier": "MAEU", "ref": "MAEU888888888", "status": "DELIVERED", "timestamp": "not-a-time", "planned": "2026-07-20T00:00:00Z", "origin": "CNSHA", "dest": "USLAX"}
