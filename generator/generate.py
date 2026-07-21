@@ -27,6 +27,10 @@ LANDING = ROOT / "data" / "landing" / "carrier"
 CARRIERS_CFG = yaml.safe_load((ROOT / "config" / "carriers.yml").read_text())
 CARRIERS = list(CARRIERS_CFG["carriers"])
 PORTS = ["USLAX", "USLGB", "SGSIN", "INNSA", "INMUN", "CNSHA", "NLRTM", "DEHAM"]
+VESSELS = yaml.safe_load((ROOT / "config" / "vessels.yml").read_text())["vessels"]
+
+# Milestones that ride the vessel; their raw events carry the vessel MMSI (R6).
+OCEAN_MILESTONES = {"loaded_on_vessel", "vessel_departed", "vessel_arrived"}
 
 # Canonical milestone -> raw status string as carriers actually send them.
 RAW_STATUS = {
@@ -112,6 +116,7 @@ def gen_events(count: int, seed: int, asof: datetime) -> list[dict]:
         booked = asof - timedelta(hours=rng.uniform(24, 26 * 24))
         jitter = rng.uniform(0.9, 1.1)
         dark_after = rng.randint(1, 4) if gone_dark else len(MILESTONES)
+        vessel = rng.choice(VESSELS)
 
         for i, ms in enumerate(MILESTONES):
             planned = booked + timedelta(hours=PLAN_OFFSETS_H[ms] * jitter)
@@ -138,6 +143,8 @@ def gen_events(count: int, seed: int, asof: datetime) -> list[dict]:
                 "origin": origin,
                 "dest": dest,
             }
+            if ms in OCEAN_MILESTONES:
+                record["vessel_mmsi"] = vessel["mmsi"]
 
             # Plant dirt at low rates (quarantine reasons per R3).
             r = rng.random()

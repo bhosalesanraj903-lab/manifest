@@ -1,0 +1,61 @@
+{
+  "uid": "manifest-ops",
+  "title": "Manifest Ops",
+  "tags": ["manifest"],
+  "timezone": "utc",
+  "refresh": "1m",
+  "time": {"from": "now-24h", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Normalize freshness SLO (< 75 min)",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute",
+        "steps": [{"color": "green", "value": null}, {"color": "red", "value": 4500}]}}},
+      "targets": [{"expr": "time() - manifest_last_run_timestamp", "refId": "A"}]
+    },
+    {
+      "id": 2, "type": "stat", "title": "AIS dwell job freshness (< 75 min)",
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute",
+        "steps": [{"color": "green", "value": null}, {"color": "red", "value": 4500}]}}},
+      "targets": [{"expr": "time() - manifest_ais_last_run_timestamp", "refId": "A"}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Open exceptions",
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "manifest_exceptions", "refId": "A"}]
+    },
+    {
+      "id": 4, "type": "stat", "title": "AIS messages (last dwell run)",
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "targets": [{"expr": "manifest_ais_messages", "refId": "A"}]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Run metrics",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "targets": [
+        {"expr": "manifest_events_processed", "legendFormat": "processed", "refId": "A"},
+        {"expr": "manifest_duplicates", "legendFormat": "duplicates", "refId": "B"},
+        {"expr": "sum(manifest_quarantined)", "legendFormat": "quarantined", "refId": "C"},
+        {"expr": "manifest_run_seconds", "legendFormat": "runtime_s", "refId": "D"}
+      ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Exceptions by type",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "targets": [{"expr": "manifest_exceptions_by_type", "legendFormat": "{{type}}", "refId": "A"}]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Quarantine by reason",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "targets": [{"expr": "manifest_quarantined", "legendFormat": "{{reason}}", "refId": "A"}]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "AIS message volume",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "targets": [{"expr": "manifest_ais_messages", "legendFormat": "messages", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

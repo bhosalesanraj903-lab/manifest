@@ -3,7 +3,7 @@ from pipelines import metrics
 SUMMARY = {
     "events_read": 899, "events_processed": 876, "duplicates": 12,
     "quarantined": {"total": 11, "unmapped_ref": 5, "unknown_status": 6, "unparseable_time": 0},
-    "exceptions": 38, "runtime_s": 0.01,
+    "exceptions": 38, "exceptions_by_type": {"LATE_DEPARTURE": 20, "MISSED_MILESTONE": 18}, "runtime_s": 0.01,
 }
 
 

@@ -8,6 +8,7 @@ stderr and never fails the pipeline run.
 
 import os
 import sys
+import time
 
 import requests
 
@@ -31,8 +32,15 @@ def exposition(summary: dict) -> str:
     lines += [
         "# TYPE manifest_exceptions gauge",
         f"manifest_exceptions {summary['exceptions']}",
+        "# TYPE manifest_exceptions_by_type gauge",
+    ]
+    for etype, n in sorted(summary.get("exceptions_by_type", {}).items()):
+        lines.append(f'manifest_exceptions_by_type{{type="{etype}"}} {n}')
+    lines += [
         "# TYPE manifest_run_seconds gauge",
         f"manifest_run_seconds {summary['runtime_s']}",
+        "# TYPE manifest_last_run_timestamp gauge",
+        f"manifest_last_run_timestamp {int(time.time())}",
     ]
     return "\n".join(lines) + "\n"
 

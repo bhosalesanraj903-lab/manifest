@@ -1,0 +1,11 @@
+# Real container vessels the generator assigns to ocean legs (R6).
+# MMSIs are editable config; verify against an AIS site if exactness matters.
+vessels:
+  - {mmsi: "353136000", name: EVER GIVEN}
+  - {mmsi: "636092932", name: MSC GULSUN}
+  - {mmsi: "228403000", name: CMA CGM MARCO POLO}
+  - {mmsi: "440334000", name: HMM ALGECIRAS}
+  - {mmsi: "219018271", name: MAERSK MC-KINNEY MOLLER}
+  - {mmsi: "563099500", name: ONE APUS}
+  - {mmsi: "477333400", name: OOCL HONG KONG}
+  - {mmsi: "218780000", name: HAPAG BERLIN EXPRESS}

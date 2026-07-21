@@ -74,10 +74,13 @@ MAX_GAP_H = {
 LATE_DEPARTURE_H = 24
 CUSTOMS_DWELL_H = 48
 
+VESSEL_STALLED_H = 72
+
 EVENT_FIELDS = ["event_id", "shipment_id", "carrier", "event_type",
-                "planned_ts", "actual_ts", "origin", "dest"]
+                "planned_ts", "actual_ts", "origin", "dest", "vessel_mmsi"]
 EXC_FIELDS = ["exception_id", "shipment_id", "carrier", "exception_type",
               "detected_at", "age_hours", "detail"]
+LEG_FIELDS = ["shipment_id", "leg_seq", "mode", "vessel_mmsi", "origin", "dest"]
 
 
 def parse_ts(raw: str, fmt: str) -> datetime:
@@ -120,10 +123,36 @@ def normalize_event(raw: dict) -> tuple[dict | None, str | None]:
         "actual_ts": iso(actual),
         "origin": raw.get("origin", ""),
         "dest": raw.get("dest", ""),
+        "vessel_mmsi": raw.get("vessel_mmsi", ""),
     }, None
 
 
-def detect_exceptions(rows: list[dict], asof: datetime) -> list[dict]:
+def load_vessel_dwell() -> dict[str, float]:
+    """Total accumulated anchor-hours per MMSI from R5's vessel_dwell.csv."""
+    path = SILVER / "vessel_dwell.csv"
+    totals: dict[str, float] = {}
+    if path.exists():
+        with path.open() as f:
+            for r in csv.DictReader(f):
+                totals[r["mmsi"]] = totals.get(r["mmsi"], 0.0) + float(r["anchor_hours"])
+    return totals
+
+
+def build_legs(rows: list[dict]) -> list[dict]:
+    """R6: one ocean leg per shipment that has a vessel assignment."""
+    legs: dict[str, dict] = {}
+    for r in rows:
+        if r["vessel_mmsi"] and r["shipment_id"] not in legs:
+            legs[r["shipment_id"]] = {
+                "shipment_id": r["shipment_id"], "leg_seq": 1, "mode": "ocean",
+                "vessel_mmsi": r["vessel_mmsi"], "origin": r["origin"], "dest": r["dest"],
+            }
+    return sorted(legs.values(), key=lambda r: r["shipment_id"])
+
+
+def detect_exceptions(rows: list[dict], asof: datetime,
+                      vessel_dwell: dict[str, float] | None = None) -> list[dict]:
+    vessel_dwell = vessel_dwell if vessel_dwell is not None else {}
     by_shipment: dict[str, list[dict]] = {}
     for r in rows:
         by_shipment.setdefault(r["shipment_id"], []).append(r)
@@ -175,6 +204,15 @@ def detect_exceptions(rows: list[dict], asof: datetime) -> list[dict]:
                 add(sid, carrier, "CUSTOMS_DWELL", dwell_h - CUSTOMS_DWELL_H,
                     f"in customs {dwell_h:.0f}h with no release")
 
+        # VESSEL_STALLED (R6): mid-voyage and the assigned vessel has been
+        # sitting at anchor beyond threshold per live AIS dwell data.
+        if dep and not arr:
+            mmsi = dep.get("vessel_mmsi", "")
+            anchored_h = vessel_dwell.get(mmsi, 0.0)
+            if mmsi and anchored_h > VESSEL_STALLED_H:
+                add(sid, carrier, "VESSEL_STALLED", anchored_h - VESSEL_STALLED_H,
+                    f"vessel {mmsi} at anchor {anchored_h:.0f}h mid-voyage")
+
     exceptions.sort(key=lambda e: e["exception_id"])
     return exceptions
 
@@ -217,7 +255,8 @@ def run(asof: datetime) -> dict:
                 f.write(json.dumps(rec) + "\n")
 
     rows.sort(key=lambda r: (r["shipment_id"], r["actual_ts"], r["event_id"]))
-    exceptions = detect_exceptions(rows, asof)
+    exceptions = detect_exceptions(rows, asof, load_vessel_dwell())
+    legs = build_legs(rows)
 
     SILVER.mkdir(parents=True, exist_ok=True)
     with (SILVER / "shipment_events.csv").open("w", newline="") as f:
@@ -228,9 +267,17 @@ def run(asof: datetime) -> dict:
         w = csv.DictWriter(f, fieldnames=EXC_FIELDS)
         w.writeheader()
         w.writerows(exceptions)
+    with (SILVER / "shipment_legs.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=LEG_FIELDS)
+        w.writeheader()
+        w.writerows(legs)
 
     summary["events_processed"] = len(rows)
     summary["exceptions"] = len(exceptions)
+    by_type: dict[str, int] = {}
+    for e in exceptions:
+        by_type[e["exception_type"]] = by_type.get(e["exception_type"], 0) + 1
+    summary["exceptions_by_type"] = by_type
     summary["runtime_s"] = round(time.monotonic() - t0, 2)
     (SILVER / "_run_summary.json").write_text(json.dumps(summary, indent=2))
     return summary

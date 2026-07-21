@@ -19,8 +19,8 @@ ais_boxes:
   singapore_strait:
     ports: [SGSIN]
     box: [[1.03, 103.55], [1.35, 104.10]]
-    subscribed: false   # R5
+    subscribed: true    # enabled in R5
   india_west:
     ports: [INNSA, INMUN]
     box: [[18.70, 69.50], [23.00, 73.10]]
-    subscribed: false   # R5
+    subscribed: true    # enabled in R5
