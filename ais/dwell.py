@@ -84,14 +84,15 @@ def run(date: str) -> dict:
     for line in src.read_text().splitlines():
         summary["messages"] += 1
         msg = json.loads(line)
-        meta = msg.get("MetaData", {})
-        mmsi = str(meta.get("MMSI", ""))
+        # aisstream payloads use "MetaData"; their docs say "Metadata" — accept both.
+        meta = msg.get("MetaData") or msg.get("Metadata") or {}
         received = msg.get("received_at", "")
         if msg.get("MessageType") == "PositionReport":
             summary["position_reports"] += 1
             body = msg.get("Message", {}).get("PositionReport", {})
-            lat = body.get("Latitude", meta.get("latitude"))
-            lon = body.get("Longitude", meta.get("longitude"))
+            mmsi = str(meta.get("MMSI") or body.get("UserID") or "")
+            lat = body.get("Latitude", meta.get("latitude") or meta.get("Latitude"))
+            lon = body.get("Longitude", meta.get("longitude") or meta.get("Longitude"))
             sog = body.get("Sog")
             if lat is None or lon is None or sog is None or sog >= SOG_ANCHOR_KN:
                 continue
@@ -101,6 +102,7 @@ def run(date: str) -> dict:
         elif msg.get("MessageType") == "ShipStaticData":
             summary["static_reports"] += 1
             body = msg.get("Message", {}).get("ShipStaticData", {})
+            mmsi = str(meta.get("MMSI") or body.get("UserID") or "")
             prev = statics.get(mmsi)
             if prev is None or received > prev["observed_at"]:
                 statics[mmsi] = {
